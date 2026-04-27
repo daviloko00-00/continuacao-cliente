@@ -69,22 +69,73 @@ const clienteRepository = {
         return rows[0];
     },
 
-    atualizar: async (id, cliente) => {
-        const sql = `
-            UPDATE clientes 
+    atualizar: async (id, cliente, telefone, endereco) => {
+    const conn = await connection.getConnection();
+
+    try {
+        await conn.beginTransaction();
+
+        // Atualizar cliente
+        const sqlCli = `
+            UPDATE clientes
             SET Nome = ?, Cpf = ?
             WHERE IdCliente = ?
         `;
-
-        const values = [
+        const valuesCli = [
             cliente.nome,
             cliente.cpf,
             id
         ];
+        const [rowsCli] = await conn.execute(sqlCli, valuesCli);
 
-        const [result] = await connection.execute(sql, values);
-        return result;
-    },
+        // Atualizar telefone
+        const sqlTel = `
+            UPDATE telefones
+            SET Numero = ?
+            WHERE IdCliente = ?
+        `;
+        const valuesTel = [
+            telefone.numero,
+            id
+        ];
+        const [rowsTel] = await conn.execute(sqlTel, valuesTel);
+
+        // Atualizar endereço
+        const sqlEnd = `
+            UPDATE enderecos
+            SET Cep = ?, Logradouro = ?, Numero = ?, Bairro = ?, 
+                Cidade = ?, Estado = ?, Complemento = ?
+            WHERE IdCliente = ?
+        `;
+
+        const valuesEnd = [
+            endereco.cep,
+            endereco.logradouro,
+            endereco.numero,
+            endereco.bairro,
+            endereco.cidade,
+            endereco.estado,
+            endereco.complemento ?? null,
+            id
+        ];
+
+        const [rowsEnd] = await conn.execute(sqlEnd, valuesEnd);
+
+        await conn.commit();
+
+        return {
+            idCliente: id,
+            rowsCli,
+            rowsTel,
+            rowsEnd
+        };
+
+    } catch (error) {
+        await conn.rollback();
+        throw new Error(error.message);
+
+    } 
+},
 
     deletar: async (id) => {
         const conn = await connection.getConnection();
