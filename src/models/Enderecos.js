@@ -7,6 +7,7 @@ export class Enderecos {
     #bairro;
     #cidade;
     #estado;
+    #complemento
     #dataCad;
 
     constructor(
@@ -116,6 +117,10 @@ export class Enderecos {
         this.#estado = value.toUpperCase();
     }
 
+    set complemento(value ){
+
+    }
+
     set dataCad(value) {
         if (!(value instanceof Date)) {
             throw new Error("Data inválida");
@@ -157,6 +162,7 @@ export class Enderecos {
         bairro,
         cidade,
         estado,
+        complemento
         
     }) {
         if (
