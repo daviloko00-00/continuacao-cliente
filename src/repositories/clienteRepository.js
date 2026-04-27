@@ -1,23 +1,32 @@
 import { connection } from "../configs/Database.js";
 
-
 const clienteRepository = {
     criar: async (cliente, telefone, endereco) => {
         const conn = await connection.getConnection();
+
         try {
             await conn.beginTransaction();
-            const sqlCli = "INSERT INTO clientes (Nome, Cpf) VALUES (?,?)";
-            const valuesCli = [cliente.nome, cliente.cpf]
-            const [rowsCli] = await conn.execute(sqlCli, valuesCli)
+
+            // Inserir cliente
+            const sqlCli = "INSERT INTO clientes (Nome, Cpf) VALUES (?, ?)";
+            const valuesCli = [cliente.nome, cliente.cpf];
+            const [rowsCli] = await conn.execute(sqlCli, valuesCli);
+
             const idCliente = rowsCli.insertId;
 
-            const sqlTel = "INSERT INTO telefones (IdCliente, Numero) VALUES (?,?)";
-            const valuesTel = [idCliente, telefone.numero]
-            const [rowsTel] = await conn.execute(sqlTel, valuesTel)
+            // Inserir telefone
+            const sqlTel = "INSERT INTO telefones (IdCliente, Numero) VALUES (?, ?)";
+            const valuesTel = [idCliente, telefone.numero];
+            const [rowsTel] = await conn.execute(sqlTel, valuesTel);
 
-            const sqlEnd = "INSERT INTO enderecos (IdCliente, Cep, Logradouro, Numero, Bairro, Cidade, Estado, Complemento) VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
+            // Inserir endereço
+            const sqlEnd = `
+                INSERT INTO enderecos 
+                (IdCliente, Cep, Logradouro, Numero, Bairro, Cidade, Estado, Complemento) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
             const valuesEnd = [
-
                 idCliente,
                 endereco.cep,
                 endereco.logradouro,
@@ -25,32 +34,91 @@ const clienteRepository = {
                 endereco.bairro,
                 endereco.cidade,
                 endereco.estado,
-                endereco.complemento ?? null // garante que não seja undefined
+                endereco.complemento ?? null
             ];
 
-            const [rowsEnd] = await conn.execute(sqlEnd, valuesEnd)
-
-
+            const [rowsEnd] = await conn.execute(sqlEnd, valuesEnd);
 
             await conn.commit();
-            return { rowsCli, rowsTel, rowsEnd };
+
+            return {
+                idCliente,
+                rowsCli,
+                rowsTel,
+                rowsEnd
+            };
+
         } catch (error) {
             await conn.rollback();
-            throw new Error(error);
+            throw new Error(error.message);
 
-        }
-        finally {
+        } finally {
             conn.release();
         }
     },
+
     selecionar: async () => {
-        const sql = "SELECT * "
+        const sql = "SELECT * FROM clientes";
         const [rows] = await connection.execute(sql);
-        return rows
+        return rows;
     },
 
+    selecionarPorId: async (id) => {
+        const sql = "SELECT * FROM clientes WHERE IdCliente = ?";
+        const [rows] = await connection.execute(sql, [id]);
+        return rows[0];
+    },
 
-}
-export default clienteRepository
+    atualizar: async (id, cliente) => {
+        const sql = `
+            UPDATE clientes 
+            SET Nome = ?, Cpf = ?
+            WHERE IdCliente = ?
+        `;
 
+        const values = [
+            cliente.nome,
+            cliente.cpf,
+            id
+        ];
 
+        const [result] = await connection.execute(sql, values);
+        return result;
+    },
+
+    deletar: async (id) => {
+        const conn = await connection.getConnection();
+
+        try {
+            await conn.beginTransaction();
+
+            await conn.execute(
+                "DELETE FROM telefones WHERE IdCliente = ?",
+                [id]
+            );
+
+            await conn.execute(
+                "DELETE FROM enderecos WHERE IdCliente = ?",
+                [id]
+            );
+
+            const [result] = await conn.execute(
+                "DELETE FROM clientes WHERE Id = ?",
+                [id]
+            );
+
+            await conn.commit();
+
+            return result;
+
+        } catch (error) {
+            await conn.rollback();
+            throw new Error(error.message);
+
+        } finally {
+            conn.release();
+        }
+    }
+};
+
+export default clienteRepository;
