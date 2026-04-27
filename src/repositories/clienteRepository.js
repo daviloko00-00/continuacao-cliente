@@ -75,51 +75,62 @@ const clienteRepository = {
     try {
         await conn.beginTransaction();
 
-        // Atualizar cliente
+        // Atualizar cliente (obrigatório)
         const sqlCli = `
             UPDATE clientes
             SET Nome = ?, Cpf = ?
-            WHERE IdCliente = ?
+            WHERE Id = ?
         `;
+
         const valuesCli = [
             cliente.nome,
             cliente.cpf,
             id
         ];
+
         const [rowsCli] = await conn.execute(sqlCli, valuesCli);
 
-        // Atualizar telefone
-        const sqlTel = `
-            UPDATE telefones
-            SET Numero = ?
-            WHERE IdCliente = ?
-        `;
-        const valuesTel = [
-            telefone.numero,
-            id
-        ];
-        const [rowsTel] = await conn.execute(sqlTel, valuesTel);
+        let rowsTel = null;
+        let rowsEnd = null;
 
-        // Atualizar endereço
-        const sqlEnd = `
-            UPDATE enderecos
-            SET Cep = ?, Logradouro = ?, Numero = ?, Bairro = ?, 
-                Cidade = ?, Estado = ?, Complemento = ?
-            WHERE IdCliente = ?
-        `;
+        // Atualizar telefone (opcional)
+        if (telefone) {
+            const sqlTel = `
+                UPDATE telefones
+                SET Numero = ?
+                WHERE IdCliente = ?
+            `;
 
-        const valuesEnd = [
-            endereco.cep,
-            endereco.logradouro,
-            endereco.numero,
-            endereco.bairro,
-            endereco.cidade,
-            endereco.estado,
-            endereco.complemento ?? null,
-            id
-        ];
+            const valuesTel = [
+                telefone.numero,
+                id
+            ];
 
-        const [rowsEnd] = await conn.execute(sqlEnd, valuesEnd);
+            [rowsTel] = await conn.execute(sqlTel, valuesTel);
+        }
+
+        // Atualizar endereço (opcional)
+        if (endereco) {
+            const sqlEnd = `
+                UPDATE enderecos
+                SET Cep = ?, Logradouro = ?, Numero = ?, Bairro = ?,
+                    Cidade = ?, Estado = ?, Complemento = ?
+                WHERE IdCliente = ?
+            `;
+
+            const valuesEnd = [
+                endereco.cep,
+                endereco.logradouro,
+                endereco.numero,
+                endereco.bairro,
+                endereco.cidade,
+                endereco.estado,
+                endereco.complemento ?? null,
+                id
+            ];
+
+            [rowsEnd] = await conn.execute(sqlEnd, valuesEnd);
+        }
 
         await conn.commit();
 
@@ -133,8 +144,7 @@ const clienteRepository = {
     } catch (error) {
         await conn.rollback();
         throw new Error(error.message);
-
-    } 
+    }
 },
 
     deletar: async (id) => {
